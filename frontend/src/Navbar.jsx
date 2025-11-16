@@ -13,15 +13,25 @@ function Navbar() {
   return (
     <nav className="w-full flex items-center justify-between px-8 py-4 backdrop-blur-lg bg-white/5 border-b border-white/20 fixed top-0 left-0 z-50">
       
-      {/* Logo */}
+      {/* Logo with Tooltip */}
       <div
         onClick={() => navigate("/")}
-        className="flex items-center gap-2 text-2xl font-extrabold text-white cursor-pointer select-none"
+        className="relative flex items-center gap-2 text-2xl font-extrabold text-white cursor-pointer select-none group"
       >
         <span className="inline-block transition-transform duration-700 hover:rotate-[360deg]">
           🌐
         </span>
         <span>AURA.AI</span>
+
+        {/* Tooltip */}
+        <span
+          className="absolute left-1/2 top-full mt-2 -translate-x-1/2 
+                     px-3 py-1 rounded-lg bg-black/80 text-white text-sm 
+                     opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                     whitespace-nowrap pointer-events-none"
+        >
+          Click here to go to the landing page
+        </span>
       </div>
 
       {/* Nav Items */}

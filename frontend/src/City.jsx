@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 
 // Utility: emoji by mood
 const getMoodEmoji = (mood) => {
@@ -23,37 +22,41 @@ function City() {
   const [headline, setHeadline] = useState("");
 
   useEffect(() => {
-    // get all saved vibes from localStorage
-    const raw = JSON.parse(localStorage.getItem("aura_fetch_data")) || {};
-    const storedData = raw.data || []; // ✅ fix here
+    try {
+      // get all saved vibes from localStorage
+      const raw = JSON.parse(localStorage.getItem("aura_fetch_data")) || {};
+      const storedData = raw.data || [];
 
-    // find current city
-    const foundCity = storedData.find(
-      (c) => c.city.toLowerCase() === city_name.toLowerCase()
-    );
+      // find current city
+      const foundCity = storedData.find(
+        (c) => c.city.toLowerCase() === city_name.toLowerCase()
+      );
 
-    if (!foundCity) {
-      alert(`⚠️ No data found for ${city_name}. Please Get All The Vibes first.`);
-      setTimeout(() => navigate("/"), 3000);
-      return;
+      if (!foundCity) {
+        alert(`⚠️ No data found for ${city_name}. Please Get All The Vibes first.`);
+        setTimeout(() => navigate("/"), 3000);
+        return;
+      }
+
+      setCityData(foundCity);
+
+      // ✅ pull from aura_headlines_batch
+      const headlinesRaw = JSON.parse(localStorage.getItem("aura_headlines_batch")) || {};
+      const headlinesData = headlinesRaw.data || [];
+
+      const matchedHeadline = headlinesData.find(
+        (h) => h.city.toLowerCase() === city_name.toLowerCase()
+      );
+
+      if (matchedHeadline?.enhanced_headline) {
+        setHeadline(matchedHeadline.enhanced_headline);
+      } else {
+        setHeadline("✨ No headline available, but vibes are still alive!");
+      }
+    } catch (err) {
+      console.error("Error loading city/headline:", err);
+      setHeadline("⚠️ Couldn’t load headline.");
     }
-
-    setCityData(foundCity);
-
-    // call backend to generate single headline
-    axios
-      .post("/api/headlines/generate-single", foundCity)
-      .then((res) => {
-        if (typeof res.data === "string") {
-          setHeadline(res.data);
-        } else if (res.data.enhanced_headline) {
-          setHeadline(res.data.enhanced_headline);
-        }
-      })
-      .catch((err) => {
-        console.error("Headline generation failed:", err);
-        setHeadline("✨ Couldn’t generate headline, but vibes are still alive!");
-      });
   }, [city_name, navigate]);
 
   if (!cityData) {
@@ -91,15 +94,15 @@ function City() {
         <h1 className="text-4xl font-extrabold mb-2">{city}</h1>
         <p className="text-lg font-semibold">
           {mood_summary.mood_label || "Unknown"} {getMoodEmoji(mood_summary.mood_label)}
-          {" • Score: "}
-          {mood_summary.avg_sentiment?.toFixed(2) || 0}
         </p>
       </div>
 
       {/* Headline */}
       {headline && (
         <div className="text-center">
-          <p className="text-2xl font-bold text-indigo-400">📰 {headline}</p>
+          <p className="text-2xl font-bold text-cyan-300 drop-shadow-lg">
+      📰 {headline}
+    </p>
         </div>
       )}
 
@@ -107,7 +110,9 @@ function City() {
       <div className="flex justify-center">
         <div className="p-6 rounded-2xl shadow-lg w-72 bg-black/30 backdrop-blur-md">
           <h3 className="text-xl font-semibold mb-2">🌦 Weather</h3>
-          <p>{weather.temperature_c}°C • {weather.condition}</p>
+          <p>
+            {weather.temperature_c}°C • {weather.condition}
+          </p>
           <p className="text-sm text-zinc-400">
             Humidity: {weather.humidity}% • Wind: {weather.wind_kph} km/h
           </p>

@@ -28,19 +28,41 @@ function Mood() {
   useEffect(() => {
     const fetchData = localStorage.getItem("aura_fetch_data");
     const moodData = localStorage.getItem("aura_mood_data");
+    const headlinesData = localStorage.getItem("aura_headlines_batch");
+    const futureData = localStorage.getItem("aura_future_forecast");
 
     // ✅ If not available → warn + redirect
-    if (!fetchData || !moodData) {
+    if (!fetchData || !moodData || !headlinesData || !futureData) {
       setLoadingMsg("⚠️ First fetch all vibes!");
       setTimeout(() => navigate("/"), 3000);
       return;
     }
 
     try {
-      const raw = JSON.parse(moodData) || {};
-      setCities(raw.data || []);
+      const moodParsed = JSON.parse(moodData) || {};
+      const headlinesParsed = JSON.parse(headlinesData) || {};
+      const futureParsed = JSON.parse(futureData) || {};
+
+      const enriched = (moodParsed.data || []).map((city) => {
+        // Match headline
+        const headlineEntry = headlinesParsed.data?.find(
+          (h) => h.city.toLowerCase() === city.city.toLowerCase()
+        );
+        // Match future forecast
+        const futureEntry = futureParsed.future_moods?.find(
+          (f) => f.city.toLowerCase() === city.city.toLowerCase()
+        );
+
+        return {
+          ...city,
+          enhanced_headline: headlineEntry?.enhanced_headline || city.headline,
+          future_mood: futureEntry?.future_mood || null,
+        };
+      });
+
+      setCities(enriched);
     } catch (err) {
-      console.error("Failed to load aura_mood_data:", err);
+      console.error("Failed to load mood/headlines/future:", err);
       setCities([]);
     }
   }, [navigate]);
@@ -88,12 +110,23 @@ function Mood() {
                 )}`}
               >
                 {city.mood_metrics?.mood_label}{" "}
-                {city.mood_metrics?.mood_emoji || "🤔"}
-                • Score: {city.mood_metrics?.avg_sentiment?.toFixed(2)}
+                {city.mood_metrics?.mood_emoji || "🤔"} • Score:{" "}
+                {city.mood_metrics?.avg_sentiment?.toFixed(2)}
               </p>
 
               {/* Headline */}
-              <p className="mt-2 italic text-indigo-300">“{city.headline}”</p>
+              {city.enhanced_headline && (
+                <p className="mt-2 text-cyan-300 font-semibold drop-shadow">
+                  📰 {city.enhanced_headline}
+                </p>
+              )}
+
+              {/* Future Mood */}
+              {city.future_mood && (
+                <p className="mt-2 italic text-pink-300 drop-shadow">
+                  🔮 {city.future_mood}
+                </p>
+              )}
 
               {/* Weather */}
               {city.weather && (

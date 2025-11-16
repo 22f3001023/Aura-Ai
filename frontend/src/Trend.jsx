@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 
 // Utility: emoji by mood
 const getMoodEmoji = (mood) => {
@@ -22,12 +21,16 @@ function Trend() {
   const { city_name } = useParams();
   const navigate = useNavigate();
   const [cityData, setCityData] = useState(null);
+  const [headline, setHeadline] = useState("");
+  const [futureMood, setFutureMood] = useState("");
 
   useEffect(() => {
     // check local storage
-    const raw = JSON.parse(localStorage.getItem("aura_mood_data")) || {};
-    const storedData = raw.data || [];
+    const rawMood = JSON.parse(localStorage.getItem("aura_mood_data")) || {};
+    const rawHeadlines = JSON.parse(localStorage.getItem("aura_headlines_batch")) || {};
+    const rawFuture = JSON.parse(localStorage.getItem("aura_future_forecast")) || {};
 
+    const storedData = rawMood.data || [];
     const foundCity = storedData.find(
       (c) => c.city.toLowerCase() === city_name.toLowerCase()
     );
@@ -40,17 +43,23 @@ function Trend() {
 
     setCityData(foundCity);
 
-    // Try API (optional override)
-    axios
-      .post("/api/mood/archive", foundCity)
-      .then((res) => {
-        if (res.data && typeof res.data === "object" && res.data.city) {
-          setCityData(res.data);
-        }
-      })
-      .catch(() => {
-        console.warn("⚠️ Archive API failed. Using local storage data.");
-      });
+    // headline lookup
+    const headlineEntry =
+      rawHeadlines?.data?.find(
+        (h) => h.city.toLowerCase() === city_name.toLowerCase()
+      ) || null;
+    if (headlineEntry) {
+      setHeadline(headlineEntry.enhanced_headline);
+    }
+
+    // future mood lookup
+    const futureEntry =
+      rawFuture?.future_moods?.find(
+        (f) => f.city.toLowerCase() === city_name.toLowerCase()
+      ) || null;
+    if (futureEntry) {
+      setFutureMood(futureEntry.future_mood);
+    }
   }, [city_name, navigate]);
 
   if (!cityData) {
@@ -63,7 +72,6 @@ function Trend() {
 
   const {
     city,
-    headline,
     mood_metrics = {},
     weather = {},
     trending_topics = [],
@@ -88,15 +96,24 @@ function Trend() {
         <p className="text-lg font-semibold">
           {mood_metrics.mood_label || "Unknown"}{" "}
           {mood_metrics.mood_emoji || getMoodEmoji(mood_metrics.mood_label)}
-          {" • Score: "}
-          {mood_metrics.avg_sentiment?.toFixed(2) || 0}
         </p>
       </div>
 
       {/* Headline */}
       {headline && (
         <div className="text-center">
-          <p className="text-2xl font-bold text-indigo-400">📰 {headline}</p>
+          <p className="text-2xl font-bold text-cyan-300 drop-shadow-lg">
+            📰 {headline}
+          </p>
+        </div>
+      )}
+
+      {/* Future Mood */}
+      {futureMood && (
+        <div className="text-center">
+          <p className="text-xl italic text-pink-300 drop-shadow">
+            🔮 {futureMood}
+          </p>
         </div>
       )}
 

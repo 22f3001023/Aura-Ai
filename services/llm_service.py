@@ -1061,3 +1061,82 @@ Based on the ACTUAL content analysis above, generate ONE perfect viral Gen-Z hea
             weather=weather,
             trending_topics=trending_topics
         )
+    
+    async def generate_future_mood_from_raw_data(
+        self, 
+        city: str, 
+        news_items: List[Dict], 
+        tweet_items: List[Dict], 
+        weather: Dict, 
+        trending_topics: List[str]
+    ) -> str:
+        """
+        Predict the future mood like Gen-Z style from ACTUAL raw news headlines, tweet texts, and weather
+        No fallbacks - pure LLM generation from real content
+        """
+        try:
+            # Validate we have real content
+            if not news_items and not tweet_items:
+                raise Exception(f"No news or tweet content available for {city}")
+            
+            # Format ALL the actual content for LLM analysis
+            news_content = self._format_actual_news_content(news_items)
+            tweet_content = self._format_actual_tweet_content(tweet_items)
+            weather_content = self._format_weather_content(weather)
+            
+            prompt = f"""
+You are a Gen-Z social media expert predicting future moods about {city} based on REAL-TIME DATA.
+
+ANALYZE THIS ACTUAL DATA FROM {city}:
+
+CURRENT WEATHER:
+{weather_content}
+
+ACTUAL NEWS HEADLINES ({len(news_items)} articles):
+{news_content}
+
+ACTUAL SOCIAL MEDIA POSTS ({len(tweet_items)} posts):
+{tweet_content}
+
+TRENDING TOPICS:
+{', '.join(trending_topics) if trending_topics else 'No specific trends detected'}
+
+TASK: Predict the future mood for {city} right now based on the ACTUAL CONTENT above.
+
+REQUIREMENTS:
+✅ Analyze the ACTUAL news headlines and social media content
+✅ Use authentic Gen-Z slang (no cap, periodt, slay, vibes, fr, rn, lowkey, highkey, bussin, sus, etc.)
+✅ Keep under 10 words maximum
+✅ Include 1-2 emojis that match the actual mood from content
+✅ Sound like a viral TikTok/Instagram story caption
+✅ Combine the real weather + actual news themes + social sentiment
+✅ Generate a super cool Gen-Z style future mood that captures essense of the {city} and people will remember and share.
+✅ Be creative and imaginative.
+✅ If people come tommorrow to this city, they should expect this.
+✅ Make it sound future tense.
+
+EXAMPLES OF STYLE:
+"Shower not working, no worries, pack and come to Mumbai 🌧️✨"
+"Worried about increased GST on ciggarets?, Don't worry, Delhi got you covered 👀💪"
+"Born in Bangalore, reached home after B.Tech — because traffic moves faster than life here.🚗"
+
+Based on the ACTUAL content analysis above, generate ONE perfect Gen-Z style future mood for {city} now.:
+            """
+
+            # Generate using Gemini
+            response = self.model.generate_content(prompt)
+            
+            if not response or not response.text:
+                raise Exception("LLM returned empty response")
+            
+            headline = self._clean_headline(response.text)
+            
+            if not headline or len(headline) < 5:
+                raise Exception("LLM generated invalid headline")
+            
+            logger.info(f"Generated Future Mood for {city}: {headline}")
+            return headline
+            
+        except Exception as e:
+            logger.error(f"LLM mood generation failed for {city}: {e}")
+            raise Exception(f"Failed to mood headline for {city}: {str(e)}")

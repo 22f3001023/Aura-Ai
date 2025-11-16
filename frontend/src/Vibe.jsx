@@ -5,14 +5,16 @@ import Navbar from "./Navbar";
 
 function Vibe() {
   const [cities, setCities] = useState([]);
+  const [headlines, setHeadlines] = useState([]);
   const [loadingMsg, setLoadingMsg] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = localStorage.getItem("aura_fetch_data");
     const moodData = localStorage.getItem("aura_mood_data");
+    const headlinesData = localStorage.getItem("aura_headlines_batch");
 
-    if (!fetchData || !moodData) {
+    if (!fetchData || !moodData || !headlinesData) {
       setLoadingMsg("⚠️ First fetch all vibes!");
       setTimeout(() => navigate("/"), 3000);
       return;
@@ -21,6 +23,7 @@ function Vibe() {
     try {
       const parsedData = JSON.parse(fetchData);
       const moodParsed = JSON.parse(moodData);
+      const headlinesParsed = JSON.parse(headlinesData);
 
       let combinedData = [];
       if (moodParsed?.data) {
@@ -31,14 +34,23 @@ function Vibe() {
 
       const indianCities = combinedData.filter((c) =>
         ["India"].includes(c.country) ||
-        c.city.match(/Delhi|Mumbai|Chennai|Bangalore|Hyderabad|Kolkata|Ahmedabad|Jaipur|Lucknow|Pune/i)
+        c.city.match(
+          /Delhi|Mumbai|Chennai|Bangalore|Hyderabad|Kolkata|Ahmedabad|Jaipur|Lucknow|Pune/i
+        )
       );
 
       setCities(indianCities);
+      setHeadlines(headlinesParsed?.data || []);
     } catch (err) {
       console.error("Error parsing localStorage data:", err);
     }
   }, [navigate]);
+
+  const getHeadlineForCity = (cityName) => {
+    return headlines.find(
+      (h) => h.city.toLowerCase() === cityName.toLowerCase()
+    );
+  };
 
   return (
     <div className="relative w-full h-screen bg-black text-white">
@@ -65,47 +77,78 @@ function Vibe() {
           />
 
           {/* City Markers */}
-          {cities.map((city, i) => (
-            <CircleMarker
-              key={i}
-              center={[city.coordinates.lat, city.coordinates.lon]}
-              pathOptions={{
-                color: "cyan",
-                fillColor: "cyan",
-                fillOpacity: 0.5,
-              }}
-              radius={15}
-            >
-              <Popup>
-  <div className="p-4 text-center bg-black/70 backdrop-blur-xl rounded-2xl border border-white/20 text-white shadow-xl">
-    <h2 className="font-bold text-lg mb-2">
-      {city.city}, {city.country}
-    </h2>
-    <p className="text-sm mb-4">{city.headline || "✨ Mood detected"}</p>
+          {cities.map((city, i) => {
+            const headline = getHeadlineForCity(city.city);
 
-    <div className="flex flex-col gap-3">
-      <button
-        onClick={() => navigate(`/city/${city.city}`)}
-        className="relative w-full py-3 rounded-3xl text-lg font-semibold text-white shadow-xl 
-                   backdrop-blur-lg bg-gradient-to-r from-pink-500 to-yellow-500 
-                   hover:from-yellow-500 hover:to-pink-500 transition-all duration-500"
-      >
-        City Details
-      </button>
+            return (
+              <CircleMarker
+                key={i}
+                center={[city.coordinates.lat, city.coordinates.lon]}
+                pathOptions={{
+                  color: "cyan",
+                  fillColor: "cyan",
+                  fillOpacity: 0.5,
+                }}
+                radius={15}
+              >
+                <Popup>
+                  <div className="p-4 text-center bg-black/70 backdrop-blur-xl rounded-2xl border border-white/20 text-white shadow-xl">
+                    <h2 className="font-bold text-lg mb-2">
+                      {city.city}, {city.country}
+                    </h2>
 
-      <button
-        onClick={() => navigate(`/trend/${city.city}`)}
-        className="relative w-full py-3 rounded-3xl text-lg font-semibold text-white shadow-xl 
-                   backdrop-blur-lg bg-gradient-to-r from-blue-500 to-green-500 
-                   hover:from-green-500 hover:to-blue-500 transition-all duration-500"
-      >
-        Trends
-      </button>
-    </div>
-  </div>
-</Popup>
-            </CircleMarker>
-          ))}
+                    {/* Enhanced Headline */}
+                    <p className="text-sm mb-3 italic text-indigo-300">
+                      {headline?.enhanced_headline || city.headline || "✨ Mood detected"}
+                    </p>
+
+                    {/* News & Tweets Count */}
+                    {headline?.data_used && (
+                      <p className="text-xs text-zinc-400 mb-3">
+                        📰 News: {headline.data_used.news_count} | 🐦 Tweets:{" "}
+                        {headline.data_used.tweets_count}
+                      </p>
+                    )}
+
+                    {/* Trending Topics */}
+                    {headline?.data_used?.trending_topics && (
+                      <div className="flex flex-wrap justify-center gap-2 mb-3">
+                        {headline.data_used.trending_topics.map((topic, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 bg-indigo-600/60 rounded-full text-xs shadow"
+                          >
+                            #{topic}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => navigate(`/city/${city.city}`)}
+                        className="relative w-full py-3 rounded-3xl text-lg font-semibold text-white shadow-xl 
+                                   backdrop-blur-lg bg-gradient-to-r from-pink-500 to-yellow-500 
+                                   hover:from-yellow-500 hover:to-pink-500 transition-all duration-500"
+                      >
+                        City Details
+                      </button>
+
+                      <button
+                        onClick={() => navigate(`/trend/${city.city}`)}
+                        className="relative w-full py-3 rounded-3xl text-lg font-semibold text-white shadow-xl 
+                                   backdrop-blur-lg bg-gradient-to-r from-blue-500 to-green-500 
+                                   hover:from-green-500 hover:to-blue-500 transition-all duration-500"
+                      >
+                        Trends
+                      </button>
+                    </div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          })}
         </MapContainer>
       )}
     </div>

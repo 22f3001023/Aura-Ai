@@ -223,6 +223,114 @@ async def generate_headline_single_city(
         logger.error(f"Error generating headline for {city_data.get('city', 'unknown')}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Future Mood Forecast for single city
+@app.post("/api/headlines/future_mood_forecast")
+async def generate_headlines_forecast(
+    request_data: Dict,
+    services=Depends(get_services)
+):
+    """
+    Predict mood for single city from the fetch-and-save response
+    Input: Single city object with news[], tweets[], weather{}
+    """
+
+    try:
+        city_name = request_data.get("city")
+        if not city_name:
+            raise HTTPException(status_code=400, detail="City name is required")
+        
+        news_items = request_data.get("news", [])
+        tweet_items = request_data.get("tweets", [])
+        weather_data = request_data.get("weather", {})
+        trending_topics = request_data.get("trending_topics", [])
+        
+        # Generate headline using LLM with ALL raw content
+        future_mood = await services["llm_service"].generate_future_mood_from_raw_data(
+            city=city_name,
+            news_items=news_items,
+            tweet_items=tweet_items,
+            weather=weather_data,
+            trending_topics=trending_topics
+        )
+        
+        return {
+            "status": "success",
+            "city": city_name,
+            "future_mood": future_mood,
+            "mood_generated_at": datetime.now().isoformat(),
+            "data_used": {
+                "news_count": len(news_items),
+                "tweets_count": len(tweet_items),
+                "weather_included": bool(weather_data),
+                "trending_topics": trending_topics
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating future mood for {city_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Future Mood Forecast for multiple cities
+@app.post("/api/headlines/future_mood_forecast_batch")
+async def generate_headlines_forecast(
+    request_data: Dict,
+    services=Depends(get_services)
+):
+    """
+    Predict mood for multiple cities from the fetch-and-save response
+    Input: {"data": [city1_obj, city2_obj, ...]}
+    """
+    try:
+        cities_data = request_data.get("data", [])
+        if not cities_data:
+            raise HTTPException(status_code=400, detail="No cities data provided")
+        
+        future_moods = []
+        
+        for city_info in cities_data:
+            try:
+                city_name = city_info.get("city")
+                
+                # Generate headline for this city
+                future_mood = await services["llm_service"].generate_future_mood_from_raw_data(
+                    city=city_name,
+                    news_items=city_info.get("news", []),
+                    tweet_items=city_info.get("tweets", []),
+                    weather=city_info.get("weather", {}),
+                    trending_topics=city_info.get("trending_topics", [])
+                )
+                
+                future_moods.append({
+                    "city": city_name,
+                    "future_mood": future_mood,
+                    "mood_generated_at": datetime.now().isoformat(),
+                    "data_used": {
+                        "news_count": len(city_info.get("news", [])),
+                        "tweets_count": len(city_info.get("tweets", [])),
+                        "weather_included": bool(city_info.get("weather", {})),
+                        "trending_topics": city_info.get("trending_topics", [])
+                    }
+                })
+                
+            except Exception as e:
+                logger.error(f"Error generating future mood for {city_name}: {e}")
+                raise HTTPException(status_code=500, detail=str(e))
+        
+        return {
+            "status": "success",
+            "future_moods": future_moods
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating future mood for multiple cities: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    return {
+            "status": "success",
+            "future_moods": future_moods    
+        }
+
+
 @app.post("/api/headlines/generate-batch")
 async def generate_headlines_batch(
     request_data: Dict,

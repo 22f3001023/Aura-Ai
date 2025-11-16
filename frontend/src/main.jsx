@@ -8,6 +8,7 @@ import City from './City.jsx'
 import Mood from './Mood.jsx'
 import Trend from './Trend.jsx'
 import About from './About.jsx'
+import TicTac from './TicTac.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -25,6 +26,8 @@ createRoot(document.getElementById('root')).render(
         <Route path="/trend/:city_name" element={<Trend />} />
         {/* About */}
         <Route path="/about" element={<About />} />
+        {/* Tic Tac Toe Easter Egg */}
+        <Route path="/tictac" element={<TicTac />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,
